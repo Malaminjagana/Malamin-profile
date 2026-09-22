@@ -1221,6 +1221,87 @@
   </div>
 </section> -->
 
+
+<!--this is chatbot-->
+
+
+
+<button
+    id="chat-toggle"
+    class="ai-chat-toggle"
+    type="button"
+    aria-label="Open AI Assistant">
+    💬
+</button>
+
+
+<div
+    id="chat-window"
+    class="ai-chat-window"
+    aria-hidden="true">
+
+    <div class="ai-chat-header">
+
+        <div>
+            <strong>AI Assistant</strong>
+
+            <span class="ai-online-status">
+                ● Online
+            </span>
+        </div>
+
+        <button
+            id="chat-close"
+            class="ai-chat-close"
+            type="button"
+            aria-label="Close AI Assistant">
+            X
+        </button>
+
+    </div>
+
+
+   
+    <div
+        id="chat-messages"
+        class="ai-chat-messages">
+
+        <div class="ai-message ai-assistant-message">
+
+            <div class="ai-message-content">
+                Hello! 👋
+                <br><br>
+                How can I help you?
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- Input -->
+    <div class="ai-chat-input-area">
+
+        <input
+            type="text"
+            id="chat-input"
+            placeholder="Ask me something..."
+            autocomplete="off"
+        >
+
+        <button
+            id="send-button"
+            type="button">
+            Send
+        </button>
+
+    </div>
+
+</div>
+
+
+
+
                     </section>
                     <!-- Footer End -->
                 </div>
@@ -1262,6 +1343,461 @@ document.getElementById("contact-form").addEventListener("submit", function(e) {
             console.log(error);
         });
 });
+</script>
+<!-- RAG AI CHATBOT JAVASCRIPT -->
+     
+<script>
+
+document.addEventListener("DOMContentLoaded", function () {
+
+    // GET CHATBOT ELEMENTS
+    
+
+    const chatToggle =
+        document.getElementById("chat-toggle");
+
+    const chatWindow =
+        document.getElementById("chat-window");
+
+    const chatClose =
+        document.getElementById("chat-close");
+
+    const chatInput =
+        document.getElementById("chat-input");
+
+    const sendButton =
+        document.getElementById("send-button");
+
+    const chatMessages =
+        document.getElementById("chat-messages");
+
+
+    // =========================================
+    // SAFETY CHECK
+    // =========================================
+
+    if (
+        !chatToggle ||
+        !chatWindow ||
+        !chatClose ||
+        !chatInput ||
+        !sendButton ||
+        !chatMessages
+    ) {
+
+        console.error(
+            "AI Chatbot: Required HTML element is missing."
+        );
+
+        return;
+    }
+
+
+    // =========================================
+    // OPEN CHAT
+    // =========================================
+
+    function openChat() {
+
+        chatWindow.classList.add("open");
+
+        chatWindow.setAttribute(
+            "aria-hidden",
+            "false"
+        );
+
+        chatInput.focus();
+
+    }
+
+
+    // =========================================
+    // CLOSE CHAT
+    // =========================================
+
+    function closeChat() {
+
+        chatWindow.classList.remove("open");
+
+        chatWindow.setAttribute(
+            "aria-hidden",
+            "true"
+        );
+
+    }
+
+
+    // =========================================
+    // CHAT TOGGLE BUTTON
+    // =========================================
+
+    chatToggle.addEventListener(
+        "click",
+        function (event) {
+
+            event.preventDefault();
+
+            event.stopPropagation();
+
+            if (
+                chatWindow.classList.contains("open")
+            ) {
+
+                closeChat();
+
+            } else {
+
+                openChat();
+
+            }
+
+        }
+    );
+
+
+    // =========================================
+    // KEEP CHAT INTERACTION INSIDE CHAT
+    // =========================================
+
+    function keepChatInteractionLocal(event) {
+
+        event.stopPropagation();
+
+    }
+
+
+    [
+        "click",
+        "pointerdown",
+        "mousedown",
+        "touchstart",
+        "focusin"
+    ].forEach(function (eventName) {
+
+        chatWindow.addEventListener(
+            eventName,
+            keepChatInteractionLocal
+        );
+
+    });
+
+
+    // =========================================
+    // CLOSE BUTTON
+    // =========================================
+
+    chatClose.addEventListener(
+        "click",
+        function (event) {
+
+            event.preventDefault();
+
+            event.stopPropagation();
+
+            closeChat();
+
+        }
+    );
+
+
+    // SEND MESSAGE TO FASTAPI
+
+    async function sendChatMessage() {
+
+        // Get message from input
+
+        const message =
+            chatInput.value.trim();
+
+
+        // Don't send empty messages
+
+        if (message === "") {
+
+            return;
+
+        }
+
+
+        // SHOW USER MESSAGE
+
+        addChatMessage(
+            message,
+            "user"
+        );
+
+
+        
+        // CLEAR INPUT
+
+        chatInput.value = "";
+
+
+        // SHOW TYPING
+
+        showTyping();
+
+
+        try {
+
+            // CALL FASTAPI BACKEND  this is the local http://127.0.0.1:8000
+
+
+const API_URL = "https://auto-ai-rag.onrender.com";
+const response = await fetch(`${API_URL}/ask`, {
+    method: "POST",
+    headers: {
+        "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+        message: message
+    })
+});
+                
+            
+
+
+            // CHECK HTTP RESPONSE
+
+            if (!response.ok) {
+
+                throw new Error(
+                    `API error: ${response.status}`
+                );
+
+            }
+
+
+            // =================================
+            // CONVERT RESPONSE TO JSON
+            // =================================
+
+            const data =
+                await response.json();
+
+
+            // =================================
+            // REMOVE TYPING
+            // =================================
+
+            removeTyping();
+
+
+            // =================================
+            // SHOW AI RESPONSE
+            // =================================
+
+            addChatMessage(
+                data.answer,
+                "assistant"
+            );
+
+        }
+
+
+        // =====================================
+        // ERROR HANDLING
+        // =====================================
+
+        catch (error) {
+
+            console.error(
+                "Chatbot API error:",
+                error
+            );
+
+
+            // Remove typing indicator
+
+            removeTyping();
+
+
+            // Show error message
+
+            addChatMessage(
+                "Sorry, I couldn't connect to the AI server. Please try again later.",
+                "assistant"
+            );
+
+        }
+
+    }
+
+
+    // =========================================
+    // SEND BUTTON
+    // =========================================
+
+    sendButton.addEventListener(
+        "click",
+        sendChatMessage
+    );
+
+
+    // =========================================
+    // ENTER KEY
+    // =========================================
+
+    chatInput.addEventListener(
+        "keydown",
+        function (event) {
+
+            if (event.key === "Enter") {
+
+                event.preventDefault();
+
+                sendChatMessage();
+
+            }
+
+        }
+    );
+
+
+    
+    // ADD MESSAGE TO CHAT
+
+    function addChatMessage(
+        text,
+        sender
+    ) {
+
+        const messageElement =
+            document.createElement("div");
+
+
+        messageElement.classList.add(
+            "ai-message"
+        );
+
+
+        // User message
+
+        if (sender === "user") {
+
+            messageElement.classList.add(
+                "ai-user-message"
+            );
+
+        }
+
+
+        // AI message
+
+        else {
+
+            messageElement.classList.add(
+                "ai-assistant-message"
+            );
+
+        }
+
+
+        const contentElement =
+            document.createElement("div");
+
+
+        contentElement.classList.add(
+            "ai-message-content"
+        );
+
+
+        contentElement.textContent =
+            text;
+
+
+        messageElement.appendChild(
+            contentElement
+        );
+
+
+        chatMessages.appendChild(
+            messageElement
+        );
+
+
+        // Scroll to newest message
+
+        chatMessages.scrollTop =
+            chatMessages.scrollHeight;
+
+    }
+
+
+    // =========================================
+    // SHOW TYPING INDICATOR
+    // =========================================
+
+    function showTyping() {
+
+        // Don't create multiple indicators
+
+        if (
+            document.getElementById("ai-typing")
+        ) {
+
+            return;
+
+        }
+
+
+        const typingElement =
+            document.createElement("div");
+
+
+        typingElement.id =
+            "ai-typing";
+
+
+        typingElement.classList.add(
+            "ai-typing"
+        );
+
+
+        typingElement.textContent =
+            "AI is typing...";
+
+
+        chatMessages.appendChild(
+            typingElement
+        );
+
+
+        chatMessages.scrollTop =
+            chatMessages.scrollHeight;
+
+    }
+
+
+    // REMOVE TYPING INDICATOR
+
+    function removeTyping() {
+
+        const typingElement =
+            document.getElementById(
+                "ai-typing"
+            );
+
+
+        if (typingElement) {
+
+            typingElement.remove();
+
+        }
+
+    }
+
+
+    // =========================================
+    // INITIALIZATION MESSAGE
+    // =========================================
+
+    console.log(
+        "AI Chatbot initialized successfully."
+    );
+
+});
+
 </script>
     </body>
 </html>
